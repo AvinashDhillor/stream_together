@@ -8,7 +8,11 @@ function VideoPlayer(props) {
     <div>
       {props.ready && (
         <div>
-          <ReactPlayer playing={props.play} url={props.URL}></ReactPlayer>
+          <ReactPlayer
+            playing={props.play}
+            url={props.URL}
+            onEnded={props.toggleVideoState}
+          ></ReactPlayer>
           <button onClick={props.toggleVideoState}>
             {props.play ? 'Pause' : 'Play'}
           </button>

@@ -24,7 +24,7 @@ export class Remote extends Component {
       this.cbPeerRef = element;
     };
     this.state = {
-      peer: new Peer({ trickle: false }),
+      peer: null,
       file: [],
       dataURL: null
     };
@@ -49,54 +49,64 @@ export class Remote extends Component {
   };
 
   componentDidMount() {
-    this.state.peer.on('signal', data => {
-      console.log(data);
-
-      if (data.type === 'answer') {
-        let payloadData = {
-          remotePayload: JSON.stringify(data),
-          rid: this.props.rid,
-          initPayload: this.props.init
-        };
-        this.props.startSetRemote(payloadData);
-      }
-    });
-
-    this.state.peer.on('connect', () => {
-      console.log('Connected');
-    });
-
-    let file = [];
-
-    this.state.peer.on('data', data => {
-      if (data.toString() === 'NEW_FILE') {
-        file = [];
-      } else if (data.toString() === 'DONE') {
-        const newFile = new Blob(file);
-        let dataURL = URL.createObjectURL(newFile);
+    if (navigator.mediaDevices) {
+      navigator.mediaDevices.getUserMedia({ video: true }).then(stream => {
         this.setState({
-          dataURL
+          peer: new Peer({ trickle: false, stream: stream })
         });
-        this.props.videoUploadFinish();
-      } else if (data.toString() === 'PLAY') {
-        console.log('PLAY it!');
-        if (!this.props.play) this.props.setVideoState();
-      } else if (data.toString() === 'PAUSE') {
-        console.log('PAUSE it!');
-        if (this.props.play) this.props.setVideoState();
-      } else {
-        console.log('data coming');
 
-        file.push(data);
-      }
-    });
+        this.state.peer.on('signal', data => {
+          if (data.type === 'answer') {
+            let payloadData = {
+              remotePayload: JSON.stringify(data),
+              rid: this.props.rid,
+              initPayload: this.props.init
+            };
+            this.props.startSetRemote(payloadData);
+          }
+        });
 
-    this.state.peer.on('stream', stream => {
-      console.log('stream');
-      if (this.cbPeerRef) {
-        this.cbPeerRef.srcObject = stream;
-      }
-    });
+        this.state.peer.on('connect', () => {
+          console.log('Connected');
+        });
+
+        let file = [];
+
+        this.state.peer.on('data', data => {
+          let content = data.toString();
+          if (content === 'NEW_FILE') {
+            file = [];
+          } else if (content === 'DONE') {
+            document.title = 'Enjoy 🥤🍿🎉';
+            const newFile = new Blob(file);
+            let dataURL = URL.createObjectURL(newFile);
+            this.setState({
+              dataURL
+            });
+            this.props.videoUploadFinish();
+          } else if (content === 'PLAY') {
+            if (!this.props.play) this.props.setVideoState();
+          } else if (content === 'PAUSE') {
+            if (this.props.play) this.props.setVideoState();
+          } else if (content.includes('Received')) {
+            document.title = content;
+          } else {
+            file.push(data);
+          }
+        });
+
+        this.state.peer.on('stream', stream => {
+          console.log('Stream');
+          if (this.cbPeerRef) {
+            this.cbPeerRef.srcObject = stream;
+          }
+        });
+
+        if (this.cbHostRef) {
+          this.cbHostRef.srcObject = stream;
+        }
+      });
+    }
   }
 
   componentWillUnmount() {
@@ -116,17 +126,6 @@ export class Remote extends Component {
     this.props.setVideoState();
   };
 
-  handleStartStreaming = () => {
-    if (this.cbHostRef) {
-      navigator.mediaDevices
-        .getUserMedia({ video: true, audio: false })
-        .then(stream => {
-          this.cbHostRef.srcObject = stream;
-          this.state.peer.addStream(stream);
-        });
-    }
-  };
-
   render() {
     return (
       <div>
@@ -137,7 +136,6 @@ export class Remote extends Component {
         ></VideoPlayer>
 
         <div>
-          <button onClick={this.handleStartStreaming}>Start Streaming</button>
           <video
             ref={this.hostRef}
             width='200px'
@@ -145,7 +143,12 @@ export class Remote extends Component {
             src=''
             autoPlay
           ></video>{' '}
-          <video ref={this.peerRef} autoPlay></video>{' '}
+          <video
+            ref={this.peerRef}
+            width='200px'
+            height='200px'
+            autoPlay
+          ></video>{' '}
         </div>
       </div>
     );

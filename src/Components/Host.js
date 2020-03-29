@@ -24,9 +24,8 @@ export class Host extends Component {
       this.cbPeerRef = element;
     };
     this.state = {
-      peer: new Peer({ initiator: true, trickle: false }),
+      peer: null,
       rid: null,
-      percent: 0,
       dataURL: null
     };
   }
@@ -41,34 +40,48 @@ export class Host extends Component {
   }
 
   componentDidMount() {
-    this.state.peer.on('signal', data => {
-      console.log(data);
-      if (!this.props.ready) this.props.startSetInitiater(JSON.stringify(data));
-    });
+    if (navigator.mediaDevices) {
+      navigator.mediaDevices.getUserMedia({ video: true }).then(stream => {
+        this.setState({
+          peer: new Peer({
+            initiator: true,
+            trickle: false,
+            stream: stream
+          })
+        });
 
-    this.state.peer.on('connect', () => {
-      console.log('Connected');
-      this.props.setConnect(true, this.props.rid);
-    });
+        this.state.peer.on('signal', data => {
+          if (!this.props.ready)
+            this.props.startSetInitiater(JSON.stringify(data));
+        });
 
-    this.state.peer.on('data', data => {
-      if (data.toString() === 'VIDEO_UPLOAD_FINISH') {
-        this.props.videoUploadFinish();
-      } else if (data.toString() === 'PLAY') {
-        console.log('PLAY it!');
-        if (!this.props.play) this.props.setVideoState();
-      } else if (data.toString() === 'PAUSE') {
-        console.log('Pause it!');
-        if (this.props.play) this.props.setVideoState();
-      }
-    });
+        this.state.peer.on('connect', () => {
+          console.log('Connected');
+          this.props.setConnect(true, this.props.rid);
+        });
 
-    this.state.peer.on('stream', stream => {
-      console.log('stream');
-      if (this.cbPeerRef) {
-        this.cbPeerRef.srcObject = stream;
-      }
-    });
+        this.state.peer.on('data', data => {
+          if (data.toString() === 'VIDEO_UPLOAD_FINISH') {
+            this.props.videoUploadFinish();
+          } else if (data.toString() === 'PLAY') {
+            if (!this.props.play) this.props.setVideoState();
+          } else if (data.toString() === 'PAUSE') {
+            if (this.props.play) this.props.setVideoState();
+          }
+        });
+
+        this.state.peer.on('stream', stream => {
+          console.log('Stream');
+          if (this.cbPeerRef) {
+            this.cbPeerRef.srcObject = stream;
+          }
+        });
+
+        if (this.cbHostRef) {
+          this.cbHostRef.srcObject = stream;
+        }
+      });
+    }
   }
 
   componentWillUnmount() {
@@ -89,33 +102,21 @@ export class Host extends Component {
     this.state.peer.send('NEW_FILE');
     let count = 1;
     const chunkSize = 32 * 1024;
-    let total = file.size / chunkSize;
-    console.log(count.total);
+    let totalChunks = file.size / chunkSize;
 
     file.arrayBuffer().then(buffer => {
       while (buffer.byteLength) {
         const chunk = buffer.slice(0, chunkSize);
         buffer = buffer.slice(chunkSize, buffer.byteLength);
         this.state.peer.send(chunk);
-        let pc = Math.floor((count * 100) / total);
-        console.log(pc);
-        document.title = `${pc} send`;
+        let pc = Math.floor((count * 100) / totalChunks);
+        document.title = `${pc}% uploaded`;
         count++;
+        this.state.peer.send(`${pc}% Received`);
       }
-
+      document.title = 'Enjoy 🥤🍿🎉';
       this.state.peer.send('DONE');
     });
-  };
-
-  handleStartStreaming = () => {
-    if (this.cbHostRef) {
-      navigator.mediaDevices
-        .getUserMedia({ video: true, audio: false })
-        .then(stream => {
-          this.cbHostRef.srcObject = stream;
-          this.state.peer.addStream(stream);
-        });
-    }
   };
 
   handleToggleVideoState = () => {
@@ -136,14 +137,13 @@ export class Host extends Component {
           <Upload fileSubmit={this.handleFileSubmit}></Upload>
         )}
         <br></br>
-        {this.state.percent}
+
         <VideoPlayer
           URL={this.state.dataURL}
           toggleVideoState={this.handleToggleVideoState}
         ></VideoPlayer>
 
         <div>
-          <button onClick={this.handleStartStreaming}>Start Streaming</button>
           <video
             ref={this.hostRef}
             width='200px'
