@@ -2,6 +2,7 @@ import React, { Component } from 'react';
 import Peer from 'simple-peer';
 import { connect } from 'react-redux';
 import { bindActionCreators } from 'redux';
+import ReactPlayer from 'react-player';
 
 import {
   startSetRemoteInit,
@@ -13,7 +14,9 @@ export class Remote extends Component {
   constructor(props) {
     super(props);
     this.state = {
-      peer: new Peer({ trickle: false })
+      peer: new Peer({ trickle: false }),
+      file: [],
+      dataURL: null
     };
   }
 
@@ -43,8 +46,20 @@ export class Remote extends Component {
       console.log('Connected');
     });
 
+    let file = [];
+
     this.state.peer.on('data', data => {
-      console.log('Recive');
+      if (data.toString() === 'NewFile!') {
+        file = [];
+      } else if (data.toString() === 'Done!') {
+        const newFile = new Blob(file);
+        let dataURL = URL.createObjectURL(newFile);
+        this.setState({
+          dataURL
+        });
+      } else {
+        file.push(data);
+      }
     });
 
     this.state.peer.on('stream', stream => {});
@@ -60,6 +75,7 @@ export class Remote extends Component {
     return (
       <div>
         <input type='text' onChange={this.handleChange}></input>
+        <ReactPlayer url={this.state.dataURL} playing={true}></ReactPlayer>
       </div>
     );
   }

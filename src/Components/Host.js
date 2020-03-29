@@ -2,6 +2,7 @@ import React, { Component } from 'react';
 import Peer from 'simple-peer';
 import { connect } from 'react-redux';
 import { bindActionCreators } from 'redux';
+import ReactPlayer from 'react-player';
 
 import {
   startSetInitiater,
@@ -15,7 +16,9 @@ export class Host extends Component {
     super(props);
     this.state = {
       peer: new Peer({ initiator: true, trickle: false }),
-      rid: null
+      rid: null,
+      percent: 0,
+      dataURL: null
     };
   }
 
@@ -52,13 +55,28 @@ export class Host extends Component {
   handleFileSubmit = e => {
     e.preventDefault();
     let file = e.target.files[0];
+
+    let url = URL.createObjectURL(file);
+    this.setState({
+      dataURL: url
+    });
+
+    this.state.peer.send('NewFile!');
+    let count = 1;
+    const chunkSize = 32 * 1024;
+    let total = file.size / chunkSize;
+    console.log(count.total);
+
     file.arrayBuffer().then(buffer => {
-      const chunkSize = 16 * 1024;
       while (buffer.byteLength) {
         const chunk = buffer.slice(0, chunkSize);
         buffer = buffer.slice(chunkSize, buffer.byteLength);
         this.state.peer.send(chunk);
+        let pc = Math.floor((count * 100) / total);
+        console.log(pc);
+        count++;
       }
+
       this.state.peer.send('Done!');
     });
   };
@@ -66,10 +84,13 @@ export class Host extends Component {
   render() {
     return (
       <div>
-        {this.state.rid} -
+        {this.state.rid}
         {this.props.connected && (
           <Upload fileSubmit={this.handleFileSubmit}></Upload>
         )}
+        <br></br>
+        {this.state.percent}
+        <ReactPlayer url={this.state.dataURL} playing={true}></ReactPlayer>
       </div>
     );
   }
