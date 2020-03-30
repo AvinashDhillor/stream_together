@@ -3,25 +3,25 @@ import { NavLink } from 'react-router-dom';
 
 import Button from '@material-ui/core/Button';
 import Divider from '@material-ui/core/Divider';
-
+import Typography from '@material-ui/core/Typography';
 import Link from '@material-ui/core/Link';
 import CameraIcon from '@material-ui/icons/Camera';
 import DialpadIcon from '@material-ui/icons/Dialpad';
-import { Box, Grid, Typography } from '@material-ui/core';
+import { Box, Grid } from '@material-ui/core';
 
 function Main() {
   return (
     <div>
       <Box
         textAlign='center'
-        marginTop={12}
+        marginTop={15}
         padding={3}
         display='flex'
         alignItems='center'
         flexDirection='column'
       >
         {' '}
-        <Typography variant='h2'>Watch Togther With Friend</Typography>
+        <Typography variant='h2'>Stream Togther With Friend</Typography>
         <Box marginTop={3} width={3 / 5} fontWeight='fontWeightBold'>
           <Typography variant='span'>
             Do you Keep movies in your local machine? Dont worry, You can still
@@ -45,7 +45,7 @@ function Main() {
                   underline='none'
                   component={({ className, children }) => (
                     <NavLink className={className} to='/host'>
-                      HOST THE MOVIE
+                      Become the host
                     </NavLink>
                   )}
                 ></Link>
@@ -68,7 +68,7 @@ function Main() {
                   underline='none'
                   component={({ className, children }) => (
                     <NavLink className={className} to='/remote'>
-                      JOIN A FRIEND
+                      Join the host
                     </NavLink>
                   )}
                 ></Link>

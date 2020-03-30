@@ -6,6 +6,7 @@ import { createBrowserHistory } from 'history';
 import Main from '../Components/Main';
 import Host from '../Components/Host';
 import Remote from '../Components/Remote';
+import ErrorPage from '../Components/ErrorPage';
 
 export const history = createBrowserHistory();
 
@@ -16,6 +17,7 @@ const AppRouter = () => (
         <Route path='/' component={Main} exact={true}></Route>
         <Route path='/host' component={Host}></Route>
         <Route path='/remote' component={Remote}></Route>
+        <Route component={ErrorPage}></Route>
       </Switch>
     </Router>
   </div>

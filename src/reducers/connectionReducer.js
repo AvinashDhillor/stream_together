@@ -7,9 +7,9 @@ import {
 const initState = {
   init: '',
   remote: '',
-  ready: true,
+  ready: false,
   rid: '',
-  connected: true
+  connected: false
 };
 
 export default (state = initState, action) => {
