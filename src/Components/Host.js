@@ -11,11 +11,16 @@ import { setVideoState, videoUploadFinish } from '../action/media';
 
 import Upload from './Upload';
 import VideoPlayer from './VideoPlayer';
+import VideoCall from './VideoCall';
+import { Box, Grid } from '@material-ui/core';
+import CodeGenerate from './CodeGenerate';
+import copy from 'clipboard-copy';
 
 export class Host extends Component {
   constructor(props) {
     super(props);
     this.cbHostRef = null;
+    this.stream = null;
     this.hostRef = element => {
       this.cbHostRef = element;
     };
@@ -42,11 +47,12 @@ export class Host extends Component {
   componentDidMount() {
     if (navigator.mediaDevices) {
       navigator.mediaDevices.getUserMedia({ video: true }).then(stream => {
+        this.stream = stream;
         this.setState({
           peer: new Peer({
             initiator: true,
             trickle: false,
-            stream: stream
+            stream: this.stream
           })
         });
 
@@ -78,7 +84,7 @@ export class Host extends Component {
         });
 
         if (this.cbHostRef) {
-          this.cbHostRef.srcObject = stream;
+          this.cbHostRef.srcObject = this.stream;
         }
       });
     }
@@ -88,6 +94,7 @@ export class Host extends Component {
     console.log('dissconnected');
     this.props.setConnect(false, this.props.rid);
     this.state.peer.destroy();
+    this.stream.getTracks().forEach(track => track.stop());
   }
 
   handleFileSubmit = e => {
@@ -129,36 +136,60 @@ export class Host extends Component {
     this.props.setVideoState();
   };
 
+  copyToClipBoard = () => {
+    console.log('copying');
+    copy(this.state.rid);
+  };
+
   render() {
     return (
       <div>
-        {this.state.rid}
-        {this.props.connected && (
-          <Upload fileSubmit={this.handleFileSubmit}></Upload>
-        )}
-        <br></br>
+        <Box
+          css={{ height: '100vh' }}
+          borderColor='primary'
+          display='flex'
+          alignItems='center'
+        >
+          <Grid container>
+            <Grid item sm={9}>
+              <Box
+                height='100%'
+                display='flex'
+                justifyContent='center'
+                alignItems='center'
+                border={2}
+              >
+                {!this.props.ready && !this.props.connected && (
+                  <CodeGenerate
+                    rid={this.state.rid}
+                    copyToClipBoard={this.copyToClipBoard}
+                  >
+                    {' '}
+                  </CodeGenerate>
+                )}
+                {this.props.connected && (
+                  <div>
+                    <VideoPlayer
+                      URL={this.state.dataURL}
+                      toggleVideoState={this.handleToggleVideoState}
+                    ></VideoPlayer>
+                    <Upload fileSubmit={this.handleFileSubmit}></Upload>
+                  </div>
+                )}
+                <br></br>
+              </Box>
+            </Grid>
 
-        <VideoPlayer
-          URL={this.state.dataURL}
-          toggleVideoState={this.handleToggleVideoState}
-        ></VideoPlayer>
-
-        <div>
-          <video
-            ref={this.hostRef}
-            width='200px'
-            height='200px'
-            src=''
-            autoPlay
-          ></video>{' '}
-          <video
-            ref={this.peerRef}
-            width='200px'
-            height='200px'
-            src=''
-            autoPlay
-          ></video>{' '}
-        </div>
+            <Grid item sm={3}>
+              <Box display='flex' justifyContent='center' height='100%'>
+                <VideoCall
+                  hostRef={this.hostRef}
+                  peerRef={this.peerRef}
+                ></VideoCall>
+              </Box>
+            </Grid>
+          </Grid>
+        </Box>
       </div>
     );
   }

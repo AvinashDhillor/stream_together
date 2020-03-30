@@ -6,7 +6,7 @@ import { connect } from 'react-redux';
 function VideoPlayer(props) {
   return (
     <div>
-      {props.ready && (
+      {
         <div>
           <ReactPlayer
             playing={props.play}
@@ -17,7 +17,7 @@ function VideoPlayer(props) {
             {props.play ? 'Pause' : 'Play'}
           </button>
         </div>
-      )}
+      }
     </div>
   );
 }

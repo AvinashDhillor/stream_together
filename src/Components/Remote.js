@@ -2,6 +2,7 @@ import React, { Component } from 'react';
 import Peer from 'simple-peer';
 import { connect } from 'react-redux';
 import { bindActionCreators } from 'redux';
+import VideoCall from './VideoCall';
 
 import {
   startSetRemoteInit,
@@ -135,21 +136,7 @@ export class Remote extends Component {
           toggleVideoState={this.handleToggleVideoState}
         ></VideoPlayer>
 
-        <div>
-          <video
-            ref={this.hostRef}
-            width='200px'
-            height='200px'
-            src=''
-            autoPlay
-          ></video>{' '}
-          <video
-            ref={this.peerRef}
-            width='200px'
-            height='200px'
-            autoPlay
-          ></video>{' '}
-        </div>
+        <VideoCall hostRef={this.hostRef} peerRef={this.peerRef}></VideoCall>
       </div>
     );
   }
