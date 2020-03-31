@@ -19,7 +19,6 @@ export class Host extends Component {
   constructor(props) {
     super(props);
     this.cbHostRef = null;
-    this.stream = null;
     this.hostRef = element => {
       this.cbHostRef = element;
     };
@@ -31,6 +30,7 @@ export class Host extends Component {
     this.playerRef = element => {
       this.cbPlayerRef = element;
     };
+    this.stream = null;
     this.state = {
       peer: null,
       rid: null,
@@ -38,7 +38,8 @@ export class Host extends Component {
       playerVolume: 100,
       camState: true,
       micState: true,
-      playingProgress: 0
+      playingProgress: 0,
+      peerVolume: 30
     };
   }
 
@@ -51,11 +52,51 @@ export class Host extends Component {
     }
   }
 
+  componentDidUpdate(prevProps, prevState) {
+    if (prevState.peer === null && this.state.peer !== null) {
+      this.state.peer.on('signal', data => {
+        if (!this.props.ready)
+          this.props.startSetInitiater(JSON.stringify(data));
+      });
+
+      this.state.peer.on('connect', () => {
+        console.log('Connected');
+        this.props.setConnect(true, this.props.rid);
+      });
+
+      this.state.peer.on('data', data => {
+        let content = data.toString();
+        if (content === 'VIDEO_UPLOAD_FINISH') {
+          this.props.videoUploadFinish();
+        } else if (content === 'PLAY') {
+          if (!this.props.play) this.props.setVideoState();
+        } else if (content === 'PAUSE') {
+          if (this.props.play) this.props.setVideoState();
+        } else if (content.includes('playingProgress')) {
+          let progressVal = JSON.parse(content);
+          this.handleVideoProgress(null, progressVal.playingProgress, false);
+        }
+      });
+
+      this.state.peer.on('error', error => {
+        console.log(error);
+        this.props.setConnect(false, this.props.rid);
+        this.props.history.push('/error');
+      });
+
+      this.state.peer.on('stream', stream => {
+        console.log('Stream');
+        if (this.cbPeerRef) {
+          this.cbPeerRef.srcObject = stream;
+        }
+      });
+    }
+  }
+
   componentDidMount() {
     if (navigator.mediaDevices) {
-      navigator.mediaDevices
-        .getUserMedia({ video: true, audio: true })
-        .then(stream => {
+      navigator.mediaDevices.getUserMedia({ video: true, audio: true }).then(
+        stream => {
           this.stream = stream;
           this.setState({
             peer: new Peer({
@@ -65,51 +106,19 @@ export class Host extends Component {
             })
           });
 
-          this.state.peer.on('signal', data => {
-            if (!this.props.ready)
-              this.props.startSetInitiater(JSON.stringify(data));
-          });
-
-          this.state.peer.on('connect', () => {
-            console.log('Connected');
-            this.props.setConnect(true, this.props.rid);
-          });
-
-          this.state.peer.on('data', data => {
-            let content = data.toString();
-            if (content === 'VIDEO_UPLOAD_FINISH') {
-              this.props.videoUploadFinish();
-            } else if (content === 'PLAY') {
-              if (!this.props.play) this.props.setVideoState();
-            } else if (content === 'PAUSE') {
-              if (this.props.play) this.props.setVideoState();
-            } else if (content.includes('playingProgress')) {
-              let progressVal = JSON.parse(content);
-              this.handleVideoProgress(
-                null,
-                progressVal.playingProgress,
-                false
-              );
-            }
-          });
-
-          this.state.peer.on('error', error => {
-            console.log(error);
-            this.props.setConnect(false, this.props.rid);
-            this.props.history.push('/error');
-          });
-
-          this.state.peer.on('stream', stream => {
-            console.log('Stream');
-            if (this.cbPeerRef) {
-              this.cbPeerRef.srcObject = stream;
-            }
-          });
-
           if (this.cbHostRef) {
             this.cbHostRef.srcObject = this.stream;
           }
-        });
+        },
+        err => {
+          this.setState({
+            peer: new Peer({
+              initiator: true,
+              trickle: false
+            })
+          });
+        }
+      );
     }
   }
 
@@ -144,7 +153,7 @@ export class Host extends Component {
         count++;
         this.state.peer.send(`${pc}% Received`);
       }
-      // document.title = 'Enjoy 🥤🍿🎉';
+      document.title = 'Enjoy 🥤🍿🎉';
       this.state.peer.send('DONE');
     });
   };
@@ -220,6 +229,13 @@ export class Host extends Component {
     });
   };
 
+  handlePeerVolume = (event, newValue) => {
+    this.setState({
+      peerVolume: newValue
+    });
+    this.cbPeerRef.volume = newValue / 100;
+  };
+
   render() {
     return (
       <div>
@@ -283,6 +299,8 @@ export class Host extends Component {
                   handleCamStream={this.handleCamStream}
                   handleMicStream={this.handleMicStream}
                   connected={this.props.connected}
+                  peerVolume={this.state.peerVolume}
+                  handlePeerVolume={this.handlePeerVolume}
                 ></VideoCall>
               </Box>
             </Grid>

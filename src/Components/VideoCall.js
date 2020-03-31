@@ -47,11 +47,6 @@ const useStyles = makeStyles(theme => ({
 function VideoCall(props) {
   const classes = useStyles();
 
-  const [value, setValue] = React.useState(30);
-
-  const handleChange = (event, newValue) => {
-    setValue(newValue);
-  };
   return (
     <Box
       height='100vh'
@@ -67,7 +62,6 @@ function VideoCall(props) {
             ref={props.peerRef}
             width='100%'
             height='100%'
-            volume={value / 100}
             poster={BlackBackground}
             src=''
             autoPlay
@@ -82,8 +76,8 @@ function VideoCall(props) {
               <Grid item xs>
                 <Slider
                   color={'default'}
-                  value={value}
-                  onChange={handleChange}
+                  value={props.peerVolume}
+                  onChange={props.handlePeerVolume}
                   aria-labelledby='continuous-slider'
                 />
               </Grid>

@@ -37,7 +37,8 @@ export class Remote extends Component {
       playerVolume: 100,
       camState: true,
       micState: true,
-      playingProgress: 0
+      playingProgress: 0,
+      peerVolume: 30
     };
   }
 
@@ -51,6 +52,63 @@ export class Remote extends Component {
     if (prevState.dataURL !== this.state.dataURL) {
       this.state.peer.send('VIDEO_UPLOAD_FINISH');
     }
+    if (prevState.peer === null && this.state.peer !== null) {
+      this.state.peer.on('signal', data => {
+        if (data.type === 'answer') {
+          let payloadData = {
+            remotePayload: JSON.stringify(data),
+            rid: this.props.rid,
+            initPayload: this.props.init
+          };
+          this.props.startSetRemote(payloadData);
+        }
+      });
+
+      this.state.peer.on('connect', () => {
+        console.log('Connected');
+      });
+
+      let file = [];
+
+      this.state.peer.on('data', data => {
+        let content = data.toString();
+        if (content === 'NEW_FILE') {
+          file = [];
+        } else if (content === 'DONE') {
+          document.title = 'Enjoy 🥤🍿🎉';
+          const newFile = new Blob(file);
+          let dataURL = URL.createObjectURL(newFile);
+          this.setState({
+            dataURL
+          });
+          this.props.videoUploadFinish();
+        } else if (content === 'PLAY') {
+          if (!this.props.play) this.props.setVideoState();
+        } else if (content === 'PAUSE') {
+          if (this.props.play) this.props.setVideoState();
+        } else if (content.includes('Received')) {
+          document.title = content;
+        } else if (content.includes('playingProgress')) {
+          let progressVal = JSON.parse(content);
+          this.handleVideoProgress(null, progressVal.playingProgress, false);
+        } else {
+          file.push(data);
+        }
+      });
+
+      this.state.peer.on('stream', stream => {
+        console.log('Stream');
+        if (this.cbPeerRef) {
+          this.cbPeerRef.srcObject = stream;
+        }
+      });
+
+      this.state.peer.on('error', error => {
+        console.log(error);
+        this.props.setConnect(false, this.props.rid);
+        this.props.history.push('/error');
+      });
+    }
   }
 
   handleChange = e => {
@@ -61,79 +119,24 @@ export class Remote extends Component {
 
   componentDidMount() {
     if (navigator.mediaDevices) {
-      navigator.mediaDevices
-        .getUserMedia({ video: true, audio: true })
-        .then(stream => {
+      navigator.mediaDevices.getUserMedia({ video: true, audio: true }).then(
+        stream => {
           this.stream = stream;
 
           this.setState({
             peer: new Peer({ trickle: false, stream: this.stream })
           });
 
-          this.state.peer.on('signal', data => {
-            if (data.type === 'answer') {
-              let payloadData = {
-                remotePayload: JSON.stringify(data),
-                rid: this.props.rid,
-                initPayload: this.props.init
-              };
-              this.props.startSetRemote(payloadData);
-            }
-          });
-
-          this.state.peer.on('connect', () => {
-            console.log('Connected');
-          });
-
-          let file = [];
-
-          this.state.peer.on('data', data => {
-            let content = data.toString();
-            if (content === 'NEW_FILE') {
-              file = [];
-            } else if (content === 'DONE') {
-              // document.title = 'Enjoy 🥤🍿🎉';
-              const newFile = new Blob(file);
-              let dataURL = URL.createObjectURL(newFile);
-              this.setState({
-                dataURL
-              });
-              this.props.videoUploadFinish();
-            } else if (content === 'PLAY') {
-              if (!this.props.play) this.props.setVideoState();
-            } else if (content === 'PAUSE') {
-              if (this.props.play) this.props.setVideoState();
-            } else if (content.includes('Received')) {
-              document.title = content;
-            } else if (content.includes('playingProgress')) {
-              let progressVal = JSON.parse(content);
-              this.handleVideoProgress(
-                null,
-                progressVal.playingProgress,
-                false
-              );
-            } else {
-              file.push(data);
-            }
-          });
-
-          this.state.peer.on('stream', stream => {
-            console.log('Stream');
-            if (this.cbPeerRef) {
-              this.cbPeerRef.srcObject = stream;
-            }
-          });
-
-          this.state.peer.on('error', error => {
-            console.log(error);
-            this.props.setConnect(false, this.props.rid);
-            this.props.history.push('/error');
-          });
-
           if (this.cbHostRef) {
             this.cbHostRef.srcObject = this.stream;
           }
-        });
+        },
+        err => {
+          this.setState({
+            peer: new Peer({ trickle: false })
+          });
+        }
+      );
     }
   }
 
@@ -143,6 +146,13 @@ export class Remote extends Component {
     this.state.peer.destroy();
     this.stream.getTracks().forEach(track => track.stop());
   }
+
+  handlePeerVolume = (event, newValue) => {
+    this.setState({
+      peerVolume: newValue
+    });
+    this.cbPeerRef.volume = newValue / 100;
+  };
 
   handleToggleVideoState = () => {
     let currentState = this.props.play;
@@ -233,7 +243,7 @@ export class Remote extends Component {
                     <TextField
                       fullWidth
                       id='outlined-search'
-                      label='Paste Code Here & wait ⌛'
+                      label='Paste Code Here & Wait ⌛'
                       onChange={this.handleChange}
                       type='search'
                       variant='outlined'
@@ -275,6 +285,8 @@ export class Remote extends Component {
                   handleCamStream={this.handleCamStream}
                   handleMicStream={this.handleMicStream}
                   connected={this.props.connected}
+                  peerVolume={this.state.peerVolume}
+                  handlePeerVolume={this.handlePeerVolume}
                 ></VideoCall>
               </Box>
             </Grid>

@@ -1,6 +1,6 @@
 import React from 'react';
 
-import { Box } from '@material-ui/core';
+import { Box, Typography } from '@material-ui/core';
 import Card from '@material-ui/core/Card';
 import CardActions from '@material-ui/core/CardActions';
 import { makeStyles } from '@material-ui/core/styles';
@@ -38,18 +38,32 @@ function VideoPlayer(props) {
     <Box width='95%' height='84%'>
       <Card className={classes.root}>
         <CardMedia className={classes.media}>
-          <ReactPlayer
-            playing={props.play}
-            url={props.URL}
-            ref={props.playerRef}
-            width='100%'
-            height='100%'
-            onProgress={e => {
-              props.handlePlayingState(e.played * 100);
-            }}
-            volume={props.playerVolume / 100}
-            onEnded={props.toggleVideoState}
-          ></ReactPlayer>
+          {props.URL ? (
+            <ReactPlayer
+              playing={props.play}
+              url={props.URL}
+              ref={props.playerRef}
+              width='100%'
+              height='100%'
+              onProgress={e => {
+                props.handlePlayingState(e.played * 100);
+              }}
+              volume={props.playerVolume / 100}
+              onEnded={props.toggleVideoState}
+            ></ReactPlayer>
+          ) : (
+            <Box
+              width='100%'
+              height='100%'
+              display='flex'
+              justifyContent='center'
+              alignItems='center'
+            >
+              <Typography variant='h3' color='default'>
+                No File Is Loaded
+              </Typography>
+            </Box>
+          )}
         </CardMedia>
         <CardActions className={classes.action}>
           <Grid container spacing={3} alignItems='center'>
